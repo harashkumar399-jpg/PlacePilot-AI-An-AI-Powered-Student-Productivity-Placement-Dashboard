@@ -153,8 +153,77 @@ const resendOtp = async (req, res) => {
 };
 
 
+const jwt = require("jsonwebtoken");
+
+//  LOGIN USER 
+const loginUser = async (req, res) => {
+  try {
+    // 1. data lena
+    const { email, password } = req.body;
+
+    // 2. check fields
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password required",
+      });
+    }
+
+    // 3. user find
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // 4. check verified
+    if (!user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Please verify your email first",
+      });
+    }
+
+    // 5. password match
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // 6. token generate
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // 7. response
+    res.json({
+      success: true,
+      message: "Login successful",
+      token,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
 module.exports = {
   registerUser,
   verifyOtp,
   resendOtp,
+  loginUser,
 };
