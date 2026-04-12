@@ -1,94 +1,160 @@
+// controllers/userController.js
 
-// Import User model (DB interaction ke liye)
 const User = require("../models/user");
-
-// Import bcrypt (password hashing ke liye)
 const bcrypt = require("bcryptjs");
-
-// Import validator (email validation ke liye)
 const validator = require("validator");
+const sendEmail = require("../utils/sendEmail");
 
-// Register user controller (main logic yahi hai)
+
+//  REGISTER 
 const registerUser = async (req, res) => {
   try {
-    // 1. Client se data lena (body se)
     const { name, email, password } = req.body;
 
-    // 2. Check: sab fields aaye ya nahi
-    // Agar koi field missing hai to error return
+    // 1. Basic validation
     if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
+      return res.status(400).json({ success: false, message: "All fields required" });
     }
 
-    // 3. Email validation
-    // Check karta hai email valid format me hai ya nahi
+    // 2. Email validation
     if (!validator.isEmail(email)) {
+      return res.status(400).json({ success: false, message: "Invalid email" });
+    }
+
+    // 3. Strong password
+    if (!validator.isStrongPassword(password)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid email format",
+        message: "Password must be strong",
       });
     }
 
-    // 4. Password strength check
-    // At least 6 characters + letters + numbers hone chahiye
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
+    // 4. Check existing user
+    let user = await User.findOne({ email });
 
-    if (!passwordRegex.test(password)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Password must be at least 6 characters and include letters and numbers",
-      });
-    }
-
-    // 5. Duplicate user check
-    // Same email pe already account hai ya nahi
-    const existingUser = await User.findOne({ email });
-
-    if (existingUser) {
+    if (user && user.isVerified) {
       return res.status(400).json({
         success: false,
         message: "User already exists",
       });
     }
 
-    // 6. Password hashing
-    // Salt generate karta hai (security ke liye)
-    const salt = await bcrypt.genSalt(10);
+    // 5. Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Password ko hash karta hai
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // 6. Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = Date.now() + 5 * 60 * 1000;
 
-    // 7. New user create karna (DB me save)
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword, // hashed password store kar rahe hain
-    });
+    // 7. If user exists but not verified → update
+    if (user) {
+      user.name = name;
+      user.password = hashedPassword;
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+    } else {
+      // 8. Create new user
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        otp,
+        otpExpiry,
+      });
+    }
 
-    // 8. Success response bhejna
+    // 9. Send OTP email
+    await sendEmail(email, otp);
+
     res.status(201).json({
       success: true,
-      message: "User registered successfully",
-      data: {
-        id: user._id,
-        email: user.email,
-      },
+      message: "OTP sent to email",
     });
 
-  } catch (error) {
-    // 9. Agar koi error aaye to handle karna
-    console.error(error); // console me print (debugging ke liye)
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Export controller function
-module.exports = { registerUser };
+
+// VERIFY OTP 
+const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" });
+    }
+
+    if (user.otp !== otp || user.otpExpiry < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    // Activate account
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Account verified successfully",
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+// RESEND OTP 
+const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "User already verified",
+      });
+    }
+
+    // New OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.otp = otp;
+    user.otpExpiry = Date.now() + 5 * 60 * 1000;
+
+    await user.save();
+
+    await sendEmail(email, otp);
+
+    res.json({
+      success: true,
+      message: "OTP resent",
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+module.exports = {
+  registerUser,
+  verifyOtp,
+  resendOtp,
+};
