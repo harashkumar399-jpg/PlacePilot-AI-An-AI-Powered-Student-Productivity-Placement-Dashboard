@@ -12,6 +12,8 @@ const {
 // middleware import
 const protect = require("../middleware/authMiddleware");
 
+
+
 //  PUBLIC ROUTES 
 
 // user register karega (OTP send hoga)
@@ -38,5 +40,16 @@ router.get("/profile", protect, (req, res) => {
     userId: req.user,
   });
 });
+
+
+
+// controller import
+const { getUserProfile } = require("../controllers/userController");
+
+// ================= PROTECTED PROFILE ROUTE =================
+
+// ye route sirf tab chalega jab valid token hoga
+// flow: request → middleware → controller
+router.get("/profile", protect, getUserProfile);
 
 module.exports = router;

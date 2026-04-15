@@ -221,9 +221,44 @@ const loginUser = async (req, res) => {
 };
 
 
+// ================= GET USER PROFILE =================
+const getUserProfile = async (req, res) => {
+  try {
+    // 1. middleware ne req.user me userId daal diya tha
+    const userId = req.user;
+
+    // 2. DB se user find kar (password exclude karna)
+    const user = await User.findById(userId).select("-password");
+
+    // 3. agar user nahi mila
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // 4. response bhejna (real data)
+    res.json({
+      success: true,
+      message: "User profile fetched successfully",
+      data: user,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
 module.exports = {
   registerUser,
   verifyOtp,
   resendOtp,
   loginUser,
+  getUserProfile,
 };
