@@ -1,53 +1,79 @@
-// Load environment variables (.env file se data load karta hai)
+// Load environment variables (.env file se values load hoti hain)
 require("dotenv").config();
 
-// Import required packages
-const express = require("express"); // backend server banane ke liye
-const mongoose = require("mongoose"); // MongoDB connect karne ke liye
-const rateLimit = require("express-rate-limit"); // security (limit requests)
+// Required packages import
+const express = require("express");
+const mongoose = require("mongoose");
+const rateLimit = require("express-rate-limit");
+const cors = require("cors");
 
-// Import routes
+// Routes import
 const userRoutes = require("./routes/userRoutes");
 
-// Create express app
+// Express app create
 const app = express();
 
-// Middleware: JSON data read karne ke liye (req.body use karne ke liye zaroori)
+
+// =====================================================
+// CORS Middleware
+// Frontend (React) ko backend access allow karega
+// =====================================================
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+  })
+);
+
+
+// =====================================================
+// JSON Middleware
+// req.body use karne ke liye
+// =====================================================
 app.use(express.json());
 
 
-// 🔥 Rate Limiting (security)
-// Ek user kitni requests bhej sakta hai limit karte hain (DDoS / spam se bachne ke liye)
+// =====================================================
+// Rate Limiter
+// Spam / too many requests se protection
+// =====================================================
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes time window
-  max: 100, // ek IP se max 100 requests allowed
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 100, // ek IP se max 100 request
   message: "Too many requests, please try again later",
 });
 
-// Apply rate limiter to all requests
+// Apply globally
 app.use(limiter);
 
 
-// 🔌 MongoDB Connection
-// .env file se connection string le raha hai
-mongoose.connect(process.env.MONGO_URI)
+// =====================================================
+// MongoDB Connection
+// =====================================================
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected ✅"))
   .catch((err) => console.log(err));
 
 
-// 🧪 Test route (check server running or not)
+// =====================================================
+// Test Route
+// =====================================================
 app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
 
-// 🔗 Routes connect kar rahe hain
-// Ab jo bhi request /api/users pe aayegi wo userRoutes handle karega
+// =====================================================
+// Main Routes
+// =====================================================
 app.use("/api/users", userRoutes);
 
 
-// 🚀 Server start
-// Port 5000 pe backend run karega
-app.listen(5000, () => {
-  console.log("Server started on port 5000");
+// =====================================================
+// Server Start
+// =====================================================
+const PORT = 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`);
 });

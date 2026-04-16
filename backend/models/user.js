@@ -52,6 +52,32 @@ const userSchema = new mongoose.Schema({
     type: Date,
   },
 
+  // ================= CODING USERNAMES =================
+
+// LeetCode username
+leetcode: {
+  type: String,
+  default: null,
+},
+
+// Codeforces username
+codeforces: {
+  type: String,
+  default: null,
+},
+
+// CodeChef username
+codechef: {
+  type: String,
+  default: null,
+},
+
+// HackerRank username
+hackerrank: {
+  type: String,
+  default: null,
+},
+
 }, { 
   timestamps: true // createdAt & updatedAt auto add karega
 });

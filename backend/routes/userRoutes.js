@@ -1,55 +1,55 @@
 const express = require("express");
 const router = express.Router();
 
-// controller functions
+// ================= CONTROLLERS IMPORT =================
 const {
-  registerUser,
-  verifyOtp,
-  resendOtp,
-  loginUser,
+  registerUser,     // user registration
+  verifyOtp,        // otp verify
+  resendOtp,        // resend otp
+  loginUser,        // login + token
+  getUserProfile,   // profile data
+  getDashboard,     // dashboard data
+  updatePlatforms,
+  getLeetcodeStats
 } = require("../controllers/userController");
 
-// middleware import
+// ================= MIDDLEWARE IMPORT =================
 const protect = require("../middleware/authMiddleware");
 
 
+// =====================================================
+// PUBLIC ROUTES (token nahi chahiye)
+// =====================================================
 
-//  PUBLIC ROUTES 
-
-// user register karega (OTP send hoga)
+// Register new user
 router.post("/register", registerUser);
 
-// OTP verify karega
+// Verify OTP
 router.post("/verify-otp", verifyOtp);
 
-// OTP dobara bhejna
+// Resend OTP
 router.post("/resend-otp", resendOtp);
 
-// login karega (token milega)
+// Login user
 router.post("/login", loginUser);
 
-//  PROTECTED ROUTE 
 
-// ye route sirf tab chalega jab valid token hoga
-router.get("/profile", protect, (req, res) => {
-  res.json({
-    success: true,
-    message: "Protected route accessed successfully",
-    
-    // middleware ne user id attach ki thi
-    userId: req.user,
-  });
-});
+// =====================================================
+// PROTECTED ROUTES (token chahiye)
+// =====================================================
 
-
-
-// controller import
-const { getUserProfile } = require("../controllers/userController");
-
-// ================= PROTECTED PROFILE ROUTE =================
-
-// ye route sirf tab chalega jab valid token hoga
-// flow: request → middleware → controller
+// User Profile
 router.get("/profile", protect, getUserProfile);
 
+// User Dashboard
+router.get("/dashboard", protect, getDashboard);
+
+// update coding platform usernames
+router.put("/platforms", protect, updatePlatforms);
+
+// fetch leetcode stats
+router.get("/leetcode-stats", protect, getLeetcodeStats);
+
+
+// export router
 module.exports = router;
